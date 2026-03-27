@@ -31,37 +31,54 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
 
   const fetchUsuario = async (authUserId: string) => {
-    const { data } = await supabase
+  try {
+    const { data, error } = await supabase
       .from("usuarios")
       .select("*, roles(nombre)")
       .eq("auth_user_id", authUserId)
       .eq("activo", 1)
-      .single();
-    setUsuario(data as UsuarioSistema | null);
+      .maybeSingle();
+
+    if (error) {
+      console.error("Error obteniendo usuario:", error);
+      setUsuario(null);
+      return null;
+    }
+
+    setUsuario(data);
     return data;
-  };
+  } catch (err) {
+    console.error("Error inesperado:", err);
+    setUsuario(null);
+    return null;
+  }
+};
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        await fetchUsuario(session.user.id);
-      } else {
-        setUsuario(null);
-      }
-      setLoading(false);
-    });
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+  setSession(session);
+  setUser(session?.user ?? null);
+
+  if (session?.user) {
+    fetchUsuario(session.user.id)
+      .finally(() => setLoading(false));
+  } else {
+    setUsuario(null);
+    setLoading(false);
+  }
+});
 
     supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        fetchUsuario(session.user.id).then(() => setLoading(false));
-      } else {
-        setLoading(false);
-      }
-    });
+  setSession(session);
+  setUser(session?.user ?? null);
+
+  if (session?.user) {
+    fetchUsuario(session.user.id)
+      .finally(() => setLoading(false));
+  } else {
+    setLoading(false);
+  }
+});
 
     return () => subscription.unsubscribe();
   }, []);
