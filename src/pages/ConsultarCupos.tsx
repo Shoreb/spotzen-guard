@@ -22,13 +22,10 @@ const ConsultarCupos: React.FC = () => {
   };
 
   useEffect(() => {
-    fetchEspacios();
-    const channel = supabase
-      .channel("cupos-realtime")
-      .on("postgres_changes", { event: "*", schema: "public", table: "espacios" }, fetchEspacios)
-      .subscribe();
-    return () => { supabase.removeChannel(channel); };
-  }, []);
+  fetchEspacios();
+  const interval = setInterval(fetchEspacios, 30000);
+  return () => clearInterval(interval);
+}, []);
 
   const autos = espacios.filter(e => e.tipo_vehiculo_id === 1);
   const motos = espacios.filter(e => e.tipo_vehiculo_id === 2);
